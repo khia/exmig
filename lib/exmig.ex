@@ -205,7 +205,7 @@ defmodule Migrations do
 
 
   def migration_path(module, instance) do
-    last_version = all(module) |> Enum.reverse |> Enum.first
+    last_version = all(module) |> Enum.reverse |> List.first
     case last_version do
       nil -> :up_to_date
       Migration[id: version] ->
