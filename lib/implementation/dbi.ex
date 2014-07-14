@@ -1,7 +1,9 @@
-defrecord Migrations.DBI, for: nil, table: "migrations", transact: true
+defmodule Migrations.DBI do
+  defstruct for: nil, table: "migrations", transact: true
+end
 
 defprotocol Migration.DBI.SQL do
-  @type t
+  @type t :: any
   @type result :: {DBI.statement, DBI.bindings}
 
   @spec begin(t) :: result
@@ -30,33 +32,33 @@ defimpl Migrations.Implementation, for: Migrations.DBI do
 
   alias Migrations.DBI, as: T
 
-  def init(T[for: for] = t) do
+  def init(%T{for: for} = t) do
     {query, bindings} = Migration.DBI.SQL.init(for, t)
     DBI.query!(for, query, bindings)
     t
   end
 
-  def migrations(T[for: for] = t) do
+  def migrations(%T{for: for} = t) do
     {query, bindings} = Migration.DBI.SQL.list(for, t)
     migrations = DBI.query!(for, query, bindings)
-    lc {id, ts} inlist Enum.to_list(migrations) do
-      Migrations.Migration.new(id: id, timestamp: ts)
+    for {id, ts} <- Enum.to_list(migrations) do
+      struct(Migrations.Migration, id: id, timestamp: ts)
     end
   end
 
-  def add!(T[for: for] = t, migration) do
+  def add!(%T{for: for} = t, migration) do
     {query, bindings} = Migration.DBI.SQL.add(for, migration, t)
-    DBI.Result[count: 1] = DBI.query!(for, query, bindings)
+    %DBI.Result{count: 1} = DBI.query!(for, query, bindings)
     :ok
   end
 
-  def remove!(T[for: for] = t, migration) do
+  def remove!(%T{for: for} = t, migration) do
     {query, bindings} = Migration.DBI.SQL.remove(for, migration, t)
     DBI.query!(for, query, bindings)
     :ok
   end
 
-  def execute!(T[for: for, transact: transact], m,f,a) do
+  def execute!(%T{for: for, transact: transact}, m,f,a) do
     if transact do
       DBI.query!(for, "BEGIN")
     end
@@ -76,7 +78,7 @@ defimpl Migrations.Implementation, for: Migrations.DBI do
       if transact do
         DBI.query!(for, "ROLLBACK")
       end
-      raise(e, [], stacktrace)
+      reraise(e, [], stacktrace)
     end
   end
 

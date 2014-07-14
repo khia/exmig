@@ -14,7 +14,7 @@ defmodule Migrations.Mixfile do
 
   defp deps do
     [
-      {:exdbi, github: "exdbi/exdbi"},
+      {:exdbi, github: "khia/exdbi"},
     ]
   end
 end

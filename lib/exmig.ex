@@ -40,7 +40,9 @@ defmodule Migrations do
 
   """
 
-  defrecord Migration, id: nil, timestamp: nil
+  defmodule Migration do
+    defstruct id: nil, timestamp: nil
+  end
 
   defmacro __using__(opts) do
     quote do
@@ -83,7 +85,7 @@ defmodule Migrations do
     end
 
   """
-  defmacro up(name, state // (quote do: _state), body) do
+  defmacro up(name, state \\ (quote do: _state), body) do
     quote do
       name = "#{@prefix}: #{unquote(name)}"
       @name name
@@ -125,7 +127,13 @@ defmodule Migrations do
     end
 
   """
-  defmacro down(state // (quote do: _state), body) when not is_binary(state) do
+  defmacro down(body) do
+    _down((quote do: _state), body)
+  end
+  defmacro down(state, body) do
+    _down(state, body)
+  end
+  defp _down(state, body) when not is_binary(state) do
     quote do
       unless nil?(@current_migration) do
         raise ArgumentError, message: "downgrade '#{@current_migration}' already exists"
@@ -134,8 +142,7 @@ defmodule Migrations do
       def downgrade(@current_migration, unquote(state)), unquote(body)
     end
   end
-
-  defmacro down(name, body) when is_binary(name) do
+  defp _down(name, body) when is_binary(name) do
     quote do
       name = "#{@prefix}: #{unquote(name)}"
       @name name
@@ -163,8 +170,8 @@ defmodule Migrations do
   Returns all migrations in the module
   """
   def all(module) do
-    lc {:migrations, [id]} inlist module.__info__(:attributes) do
-      Migration.new(id: id)
+    for {:migrations, [id]} <- module.__info__(:attributes) do
+      struct(Migration, id: id)
     end
   end
 
@@ -189,14 +196,14 @@ defmodule Migrations do
 
   defp do_migrate(_module, {_instance, :up_to_date}), do: :up_to_date
   defp do_migrate(module, {instance, {:upgrade, path} = migration}) do
-    lc m inlist path do
+    for m <- path do
       I.execute!(instance, module, :upgrade, [m.id, instance])
       I.add!(instance, m)
     end
     migration
   end
   defp do_migrate(module, {instance, {:downgrade, path} = migration}) do
-    lc m inlist path do
+    for m <- path do
       I.execute!(instance, module, :downgrade, [m.id, instance])
       I.remove!(instance, m)
     end
@@ -208,7 +215,7 @@ defmodule Migrations do
     last_version = all(module) |> Enum.reverse |> List.first
     case last_version do
       nil -> :up_to_date
-      Migration[id: version] ->
+      %Migration{id: version} ->
         migration_path(module, version, instance)
     end
   end
@@ -229,11 +236,11 @@ defmodule Migrations do
         path = migrations
         {:upgrade, path}
       [last_version|_] ->
-        if Enum.member?(migrations, Migration.new(id: last_version)) do
-          path = Enum.drop_while(migrations, fn(Migration[id: id]) -> id != last_version end)
+        if Enum.member?(migrations, struct(Migration, id: last_version)) do
+          path = Enum.drop_while(migrations, fn(%Migration{id: id}) -> id != last_version end)
           {:upgrade, tl(path)}
         else
-          path = Enum.take_while(Enum.reverse(all(module)), fn(Migration[id: id]) -> id != version end)
+          path = Enum.take_while(Enum.reverse(all(module)), fn(%Migration{id: id}) -> id != version end)
           {:downgrade, path}
         end
     end

@@ -1,6 +1,6 @@
 defprotocol Migrations.Implementation do
-  @type t
-  @type state
+  @type t :: any
+  @type state :: any
 
   @spec init(t) :: t
   def init(impl)
