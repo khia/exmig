@@ -135,7 +135,7 @@ defmodule Migrations do
   end
   defp _down(state, body) when not is_binary(state) do
     quote do
-      unless nil?(@current_migration) do
+      unless is_nil(@current_migration) do
         raise ArgumentError, message: "downgrade '#{@current_migration}' already exists"
       end
       @current_migration hd(@migrations)
@@ -146,7 +146,7 @@ defmodule Migrations do
     quote do
       name = "#{@prefix}: #{unquote(name)}"
       @name name
-      unless nil?(@current_migration) do
+      unless is_nil(@current_migration) do
         raise ArgumentError, message: "downgrade '#{@current_migration}' already exists"
       end
       @current_migration name
@@ -158,7 +158,7 @@ defmodule Migrations do
     quote do
       name = "#{@prefix}: #{unquote(name)}"
       @name name
-      unless nil?(@current_migration) do
+      unless is_nil(@current_migration) do
         raise ArgumentError, message: "downgrade '#{@current_migration}' already exists"
       end
       @current_migration name
